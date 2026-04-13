@@ -43,6 +43,34 @@
   border-radius: 4px;
 }
 
+.pageToggle {
+  display: flex;
+  background: #13151b;
+  border: 1px solid #1c1f2a;
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.pageToggleBtn {
+  width: 32px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.3);
+  transition: all 0.12s;
+}
+
+.pageToggleBtn:hover { color: rgba(255, 255, 255, 0.6); }
+
+.pageToggleActive {
+  background: #1e2535;
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
 .nav {
   display: flex;
   align-items: center;
@@ -94,6 +122,31 @@
 
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinning { animation: spin 0.7s linear; }
+
+.balanceRow {
+  background: #13151b;
+  border: 1px solid #1c1f2a;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.balanceLabel {
+  font-size: 10px;
+  color: #3a4050;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.balanceVal {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 600;
+  color: #e8e9ec;
+}
 
 .errorBanner {
   background: #2a1010;
@@ -338,13 +391,10 @@
   .todayBtn { display: none; }
 }
 
-/* Mobile - hide grid, show list */
+/* Mobile */
 @media (max-width: 480px) {
   .root { padding: 14px; border-radius: 0; }
   .monthLabel { font-size: 19px; }
-  .yearLabel { display: none; }
-  .weekdays { display: none; }
-  .grid { display: none; }
   .statsRow { grid-template-columns: repeat(2, 1fr); gap: 6px; }
   .statLabel { font-size: 9px; }
   .statVal { font-size: 15px; }
