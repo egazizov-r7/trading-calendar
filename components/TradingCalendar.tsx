@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import styles from './TradingCalendar.module.css'
+import TimelineChart from './TimelineChart'
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
@@ -18,6 +19,10 @@ interface TooltipState {
   y: number
   date: string
   data: DayData | null
+}
+
+interface TimelinePoint {
+  [key: string]: number | string
 }
 
 // Demo data shown when API is not configured
@@ -45,6 +50,43 @@ const DEMO_DATA: Record<string, DayData> = {
   '2026-03-28': { pnl: 1200, pct: 1.2, trades: 3 },
 }
 
+const DEMO_BALANCE = 250905.74
+
+const DEMO_TIMELINE: Record<string, TimelinePoint> = Object.fromEntries(
+  Object.keys(DEMO_DATA).map((d, i) => [d, {
+    balance: 248000 + i * 350,
+    gex: 150 + Math.sin(i) * 40,
+    expMove: 100 + Math.cos(i) * 20,
+    volScore: 45 + Math.sin(i * 0.7) * 15,
+    spotGex: 6700 + i * 5,
+    zeroGamma: 6750 + Math.cos(i) * 30,
+    spotPrice: 6700 + i * 8,
+    adRatio: 2.5 + Math.sin(i * 0.5) * 1.5,
+    pct50ma: 40 + Math.sin(i * 0.3) * 20,
+    pct200ma: 60 + Math.cos(i * 0.4) * 10,
+    mcclellan: -5 + Math.sin(i * 0.6) * 30,
+    commission: 13.12,
+    strategy: 'Iron Condor',
+    symbol: 'SPX',
+    wingWidth: 20,
+    maxLoss: 14.3,
+    maxProfit: 5.7,
+    profitTarget: 1.14,
+    putDelta: -0.193,
+    callDelta: 0.197,
+    volDecision: i % 3 === 0 ? 'NO TRADE' : 'TRADE',
+    volThreshold: 50,
+    gexDecision: 'TRADE',
+    gexStrategy: 'conservative',
+    breadthDecision: i % 4 === 0 ? 'NO TRADE' : 'TRADE',
+    bias: i % 2 === 0 ? 'bearish' : 'bullish',
+    trend: i % 2 === 0 ? 'bearish' : 'bullish',
+    momentum: i % 2 === 0 ? 'bearish' : 'bullish',
+    upperPrice: 6820 + i * 3,
+    lowerPrice: 6590 - i * 2,
+  }])
+)
+
 function formatPnl(v: number): string {
   const sign = v >= 0 ? '+' : ''
   if (Math.abs(v) >= 1000) return sign + '$' + (v / 1000).toFixed(1) + 'k'
@@ -57,13 +99,13 @@ function getMaxAbs(data: Record<string, DayData>): number {
 
 function dayBg(pnl: number, maxAbs: number): string {
   const t = Math.min(Math.abs(pnl) / maxAbs, 1)
-  const alpha = 0.22 + t * 0.6
+  const alpha = 0.20 + t * 0.62
   if (pnl > 0) {
-    const g = Math.round(80 + t * 110)
-    return `rgba(20, ${g}, 50, ${alpha})`
+    const g = Math.round(80 + t * 140)
+    return `rgba(18, ${g}, 45, ${alpha})`
   } else {
-    const r = Math.round(110 + t * 110)
-    return `rgba(${r}, 22, 22, ${alpha})`
+    const r = Math.round(80 + t * 140)
+    return `rgba(${r}, 18, 18, ${alpha})`
   }
 }
 
@@ -74,10 +116,13 @@ export default function TradingCalendar() {
   const [isDemo, setIsDemo] = useState(true)
   const [loading, setLoading] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
+  const [balance, setBalance] = useState<number>(DEMO_BALANCE)
   const [error, setError] = useState<string | null>(null)
   const [tooltip, setTooltip] = useState<TooltipState>({ visible: false, x: 0, y: 0, date: '', data: null })
   const [isMobile, setIsMobile] = useState(false)
   const [mobileView, setMobileView] = useState<'list' | 'grid'>('list')
+  const [pageView, setPageView] = useState<'calendar' | 'timeline'>('calendar')
+  const [timelineData, setTimelineData] = useState<Record<string, TimelinePoint>>(DEMO_TIMELINE)
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 480)
@@ -98,12 +143,16 @@ export default function TradingCalendar() {
         if (json.error?.includes('must be set')) {
           setIsDemo(true)
           setTradeData(DEMO_DATA)
+          setBalance(DEMO_BALANCE)
+          setTimelineData(DEMO_TIMELINE)
         } else {
           setError(json.error || 'Fetch failed')
         }
       } else {
         setIsDemo(false)
         setTradeData(json.data)
+        setBalance(json.balance || json.deposit)
+        setTimelineData(json.timeline || {})
         setLastUpdated(json.updatedAt)
       }
     } catch (e) {
@@ -189,6 +238,27 @@ export default function TradingCalendar() {
             <div className={styles.yearLabel}>{y}</div>
           </div>
           {isDemo && <div className={styles.demoBadge}>DEMO</div>}
+          <div className={styles.pageToggle}>
+            <button
+              className={`${styles.pageToggleBtn} ${pageView === 'calendar' ? styles.pageToggleActive : ''}`}
+              onClick={() => setPageView('calendar')}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3">
+                <rect x="1" y="2" width="12" height="10" rx="1.5"/>
+                <line x1="1" y1="5" x2="13" y2="5"/>
+                <line x1="4.5" y1="2" x2="4.5" y2="0.5"/>
+                <line x1="9.5" y1="2" x2="9.5" y2="0.5"/>
+              </svg>
+            </button>
+            <button
+              className={`${styles.pageToggleBtn} ${pageView === 'timeline' ? styles.pageToggleActive : ''}`}
+              onClick={() => setPageView('timeline')}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.3">
+                <polyline points="1,11 4,6 7,8 10,3 13,5"/>
+              </svg>
+            </button>
+          </div>
         </div>
         <div className={styles.nav}>
           {isMobile && (
@@ -234,6 +304,12 @@ export default function TradingCalendar() {
 
       {error && <div className={styles.errorBanner}>⚠ {error}</div>}
 
+      {/* Portfolio Balance */}
+      <div className={styles.balanceRow}>
+        <div className={styles.balanceLabel}>Portfolio Balance</div>
+        <div className={styles.balanceVal}>${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+      </div>
+
       {/* Stats */}
       <div className={styles.statsRow}>
         <div className={styles.stat}>
@@ -259,32 +335,47 @@ export default function TradingCalendar() {
       </div>
 
       {/* Weekday headers — hidden on mobile grid-off */}
-      {(!isMobile || mobileView === 'grid') && (
+      {pageView === 'calendar' && (!isMobile || mobileView === 'grid') && (
         <div className={styles.weekdays}>
           {WEEKDAYS.map(w => <div key={w} className={styles.wday}>{w}</div>)}
         </div>
       )}
 
       {/* Calendar grid — hidden on mobile list mode */}
-      {(!isMobile || mobileView === 'grid') && (
+      {pageView === 'calendar' && (!isMobile || mobileView === 'grid') && (
         <div className={`${styles.grid} ${isMobile && mobileView === 'grid' ? styles.gridMobile : ''}`}>
           {cells}
         </div>
       )}
 
       {/* Mobile list view */}
-      {isMobile && mobileView === 'list' && (
+      {pageView === 'calendar' && isMobile && mobileView === 'list' && (
         <div className={styles.listView}>
-          {Array.from({ length: daysInMonth }, (_, i) => i + 1)
+          {Array.from({ length: daysInMonth }, (_, i) => daysInMonth - i)
             .filter(d => {
               const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-              return tradeData[dateStr]
+              const dow = new Date(dateStr + 'T00:00:00').getDay()
+              return dow !== 0 && dow !== 6 // skip weekends
             })
-            .sort((a, b) => b - a)
             .map(d => {
               const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-              const data = tradeData[dateStr]!
+              const data = tradeData[dateStr]
               const dow = new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' })
+              if (!data) {
+                return (
+                  <div key={dateStr} className={`${styles.listRow} ${styles.listRowEmpty}`}>
+                    <div className={styles.listDateBlock}>
+                      <div className={styles.listEmptyDate}>
+                        {new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </div>
+                      <div className={styles.listDow}>{dow}</div>
+                    </div>
+                    <div className={styles.listRight}>
+                      <div className={styles.listEmptyDate}>no trades</div>
+                    </div>
+                  </div>
+                )
+              }
               return (
                 <div
                   key={dateStr}
@@ -311,6 +402,14 @@ export default function TradingCalendar() {
           }
         </div>
       )}
+
+      {/* Timeline view */}
+      {pageView === 'timeline' && <TimelineChart data={
+        Object.fromEntries(Object.entries(timelineData).filter(([k]) => {
+          const d = new Date(k + 'T00:00:00')
+          return d.getFullYear() === y && d.getMonth() === m
+        }))
+      } />}
 
       {/* Tooltip */}
       {tooltip.visible && tooltip.data && (

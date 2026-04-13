@@ -1,0 +1,164 @@
+.root {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.section {}
+
+.sectionTitle {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: #3a4050;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.legend {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #13151b;
+  border: 1px solid #1c1f2a;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: #9ca3b2;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.legendItem:hover { border-color: #3a3d4a; }
+.legendOff { opacity: 0.35; }
+
+.legendDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.chartWrap {
+  background: #13151b;
+  border: 1px solid #1c1f2a;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.empty {
+  text-align: center;
+  color: #3a4050;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 40px 0;
+}
+
+/* Tooltip */
+.tooltip {
+  position: fixed;
+  background: #1a1d26;
+  border: 1px solid #2e3244;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 11px;
+  min-width: 180px;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+}
+
+.ttDate {
+  font-size: 10px;
+  color: #5a6070;
+  margin-bottom: 6px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.ttRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+.ttDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.ttLabel {
+  color: #4a5060;
+  flex: 1;
+}
+
+.ttVal {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  color: #e8e9ec;
+}
+
+/* Metric cards */
+.cardsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.card {
+  background: #13151b;
+  border: 1px solid #1c1f2a;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.cardLabel {
+  font-size: 9px;
+  color: #3a4050;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 5px;
+}
+
+.cardVal {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e8e9ec;
+}
+
+.cardSub {
+  font-size: 9px;
+  color: #3a4050;
+  font-weight: 400;
+  margin-left: 4px;
+}
+
+@media (max-width: 768px) {
+  .cardsGrid { grid-template-columns: repeat(2, 1fr); }
+  .cardVal { font-size: 13px; }
+}
+
+@media (max-width: 480px) {
+  .cardsGrid { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .cardVal { font-size: 12px; }
+  .legend { gap: 4px; }
+  .legendItem { padding: 3px 8px; font-size: 9px; }
+}
