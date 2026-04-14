@@ -7,10 +7,10 @@ node_modules/
 .next/
 out/
 
-# Env — НИКОГДА не коммитить!
+# Env — never commit!
 .env
-.env.local
-.env.*.local
+stack.env
+service-account.json
 
 # OS
 .DS_Store
@@ -19,4 +19,3 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
-stack.env

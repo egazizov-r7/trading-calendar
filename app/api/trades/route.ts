@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { GoogleAuth } from 'google-auth-library'
+import { readFileSync } from 'fs'
 
 interface DayData {
   pnl: number
@@ -15,22 +17,39 @@ function parseStr(s: string | undefined): string {
   return (s || '').trim()
 }
 
-export async function GET() {
-  const apiKey = process.env.GOOGLE_SHEETS_API_KEY
-  const sheetId = process.env.GOOGLE_SHEET_ID
-  const range = process.env.GOOGLE_SHEET_RANGE || 'Sheet1!A:BF'
-  const deposit = parseFloat(process.env.DEPOSIT || '250000')
+function getAuth() {
+  const keyPath = process.env.GOOGLE_SERVICE_ACCOUNT_KEY_PATH || './service-account.json'
+  if (!keyPath) return null
+  const credentials = JSON.parse(readFileSync(keyPath, 'utf-8'))
+  return new GoogleAuth({
+    credentials,
+    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
+  })
+}
 
-  if (!apiKey || !sheetId) {
+export async function GET() {
+  const sheetId = process.env.GOOGLE_SHEET_ID
+  const worksheet = process.env.GOOGLE_SHEET_NAME || 'Sheet1'
+  const columns = process.env.GOOGLE_SHEET_RANGE || 'A:BF'
+  const deposit = parseFloat(process.env.DEPOSIT || '250000')
+  const range = `${worksheet}!${columns}`
+
+  const auth = getAuth()
+  if (!auth || !sheetId) {
     return NextResponse.json(
-      { error: 'GOOGLE_SHEETS_API_KEY and GOOGLE_SHEET_ID must be set in .env' },
+      { error: 'GOOGLE_SERVICE_ACCOUNT_KEY_PATH and GOOGLE_SHEET_ID must be set in stack.env' },
       { status: 500 }
     )
   }
 
   try {
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}?key=${apiKey}`
-    const res = await fetch(url, { next: { revalidate: 300 } })
+    const client = await auth.getClient()
+    const token = await client.getAccessToken()
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(range)}`
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${token.token}` },
+      next: { revalidate: 300 },
+    })
 
     if (!res.ok) {
       const text = await res.text()
@@ -119,7 +138,6 @@ export async function GET() {
         if (iBalance !== -1) firstBalance[dateStr] = parseNum(row[iBalance])
 
         timeline[dateStr] = {
-          // Chart series
           balance: iBalance !== -1 ? parseNum(row[iBalance]) : deposit,
           gex: iGex !== -1 ? parseNum(row[iGex]) : 0,
           expMove: iExpMove !== -1 ? parseNum(row[iExpMove]) : 0,
@@ -131,7 +149,6 @@ export async function GET() {
           pct50ma: iPct50ma !== -1 ? parseNum(row[iPct50ma]) : 0,
           pct200ma: iPct200ma !== -1 ? parseNum(row[iPct200ma]) : 0,
           mcclellan: iMcclellan !== -1 ? parseNum(row[iMcclellan]) : 0,
-          // Card fields
           commission: iCommission !== -1 ? parseNum(row[iCommission]) : 0,
           strategy: iStrategy !== -1 ? parseStr(row[iStrategy]) : '',
           symbol: iSymbol !== -1 ? parseStr(row[iSymbol]) : '',
@@ -153,7 +170,6 @@ export async function GET() {
           lowerPrice: iLowerPrice !== -1 ? parseNum(row[iLowerPrice]) : 0,
         }
       } else {
-        // Aggregate commissions across trades on same day
         if (timeline[dateStr]) {
           timeline[dateStr].commission += iCommission !== -1 ? parseNum(row[iCommission]) : 0
         }
