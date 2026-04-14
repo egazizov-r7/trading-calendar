@@ -9,6 +9,8 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN touch service-account.json
+RUN echo '{}' > service-account.json
 RUN npm run build
 
 # Stage 3: production runtime (minimal image)
