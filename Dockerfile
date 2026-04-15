@@ -23,10 +23,6 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-# Non-root user for security
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
-
 # Copy only what's needed for standalone output
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
@@ -35,8 +31,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/column-mapping.json ./column-mapp
 COPY --from=builder --chown=nextjs:nodejs /app/timeline-config.json ./timeline-config.json
 RUN touch /app/service-account.json
 RUN echo '{}' > /app/service-account.json
-
-USER nextjs
 
 EXPOSE 3000
 
