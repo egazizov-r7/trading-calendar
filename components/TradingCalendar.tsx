@@ -2,16 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import styles from './TradingCalendar.module.css'
-import TimelineChart from './TimelineChart'
+import TimelineChart, { TimelineConfig } from './TimelineChart'
+import { formatPnl, getMaxAbs, dayBg, DayData } from '@/lib/utils'
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
-
-interface DayData {
-  pnl: number
-  pct: number
-  trades: number
-}
 
 interface TooltipState {
   visible: boolean
@@ -87,29 +82,8 @@ const DEMO_TIMELINE: Record<string, TimelinePoint> = Object.fromEntries(
   }])
 )
 
-function formatPnl(v: number): string {
-  const sign = v >= 0 ? '+' : ''
-  if (Math.abs(v) >= 1000) return sign + '$' + (v / 1000).toFixed(1) + 'k'
-  return sign + '$' + v.toFixed(0)
-}
-
-function getMaxAbs(data: Record<string, DayData>): number {
-  return Math.max(...Object.values(data).map(d => Math.abs(d.pnl)), 1)
-}
-
-function dayBg(pnl: number, maxAbs: number): string {
-  const t = Math.min(Math.abs(pnl) / maxAbs, 1)
-  const alpha = 0.20 + t * 0.62
-  if (pnl > 0) {
-    const g = Math.round(80 + t * 140)
-    return `rgba(18, ${g}, 45, ${alpha})`
-  } else {
-    const r = Math.round(80 + t * 140)
-    return `rgba(${r}, 18, 18, ${alpha})`
-  }
-}
-
 export default function TradingCalendar() {
+  const timelineEnabled = process.env.NEXT_PUBLIC_ENABLE_TIMELINE !== 'false'
   const today = new Date()
   const [current, setCurrent] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1))
   const [tradeData, setTradeData] = useState<Record<string, DayData>>(DEMO_DATA)
@@ -123,6 +97,7 @@ export default function TradingCalendar() {
   const [mobileView, setMobileView] = useState<'list' | 'grid'>('list')
   const [pageView, setPageView] = useState<'calendar' | 'timeline'>('calendar')
   const [timelineData, setTimelineData] = useState<Record<string, TimelinePoint>>(DEMO_TIMELINE)
+  const [timelineConfig, setTimelineConfig] = useState<TimelineConfig | null>(null)
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth <= 480)
@@ -153,6 +128,7 @@ export default function TradingCalendar() {
         setTradeData(json.data)
         setBalance(json.balance || json.deposit)
         setTimelineData(json.timeline || {})
+        setTimelineConfig(json.timelineConfig || null)
         setLastUpdated(json.updatedAt)
       }
     } catch (e) {
@@ -238,7 +214,7 @@ export default function TradingCalendar() {
             <div className={styles.yearLabel}>{y}</div>
           </div>
           {isDemo && <div className={styles.demoBadge}>DEMO</div>}
-          <div className={styles.pageToggle}>
+          {timelineEnabled && <div className={styles.pageToggle}>
             <button
               className={`${styles.pageToggleBtn} ${pageView === 'calendar' ? styles.pageToggleActive : ''}`}
               onClick={() => setPageView('calendar')}
@@ -258,7 +234,7 @@ export default function TradingCalendar() {
                 <polyline points="1,11 4,6 7,8 10,3 13,5"/>
               </svg>
             </button>
-          </div>
+          </div>}
         </div>
         <div className={styles.nav}>
           {isMobile && (
@@ -404,7 +380,7 @@ export default function TradingCalendar() {
       )}
 
       {/* Timeline view */}
-      {pageView === 'timeline' && <TimelineChart data={
+      {timelineEnabled && pageView === 'timeline' && <TimelineChart config={timelineConfig} data={
         Object.fromEntries(Object.entries(timelineData).filter(([k]) => {
           const d = new Date(k + 'T00:00:00')
           return d.getFullYear() === y && d.getMonth() === m

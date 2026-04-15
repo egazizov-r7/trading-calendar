@@ -6,6 +6,7 @@ node_modules/
 # Production
 .next/
 out/
+tsconfig.tsbuildinfo
 
 # Env — never commit!
 .env
