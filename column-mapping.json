@@ -1,0 +1,41 @@
+{
+  "date_time": "date_time_ny",
+  "net_credit": "order_net_credit",
+  "status": "environment_status",
+  "balance": "portfolio_balance",
+
+  "commission": "order_commission",
+  "strategy": "order_strategy",
+  "symbol": "order_symbol",
+  "wing_width": "order_wing_width",
+  "max_loss": "order_max_loss",
+  "max_profit": "order_max_profit",
+  "profit_target": "order_profit_target_dollars",
+  "put_delta": "order_put_short_delta",
+  "call_delta": "order_call_short_delta",
+
+  "vol_score": "volatility_risk_risk_score",
+  "vol_threshold": "volatility_risk_risk_threshold",
+  "vol_decision": "volatility_risk_decision",
+
+  "gex_total": "gamma_gex_risk_total_gex_billions",
+  "gex_spot": "gamma_gex_risk_spot_price_gex",
+  "gex_zero_gamma": "gamma_gex_risk_zero_gamma_level",
+  "gex_decision": "gamma_gex_risk_decision",
+  "gex_strategy": "gamma_gex_risk_strategy",
+
+  "ad_ratio": "market_breadth_risk_ad_ratio",
+  "pct_50ma": "market_breadth_risk_pct_above_50ma",
+  "pct_200ma": "market_breadth_risk_pct_above_200ma",
+  "mcclellan": "market_breadth_risk_mcclellan",
+  "breadth_decision": "market_breadth_risk_decision",
+
+  "bias": "market_bias_bias",
+  "trend": "market_bias_details_trend",
+  "momentum": "market_bias_details_momentum",
+
+  "spot_price": "expected_move_spot_open_price",
+  "exp_move": "expected_move_round_exp_price_move",
+  "upper_price": "expected_move_upper_price",
+  "lower_price": "expected_move_lower_price"
+}

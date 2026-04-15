@@ -2,13 +2,10 @@
 
 import { useRef, useState } from 'react'
 import styles from './TimelineChart.module.css'
+import { formatVal, biasColor, avgNum, sumNum, lastStr, countDecision } from '@/lib/utils'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type TData = Record<string, any>
-
-interface Props {
-  data: Record<string, TData>
-}
 
 interface SeriesDef {
   key: string
@@ -17,48 +14,67 @@ interface SeriesDef {
   unit: string
 }
 
-function formatVal(v: number, unit: string): string {
-  if (unit === '$') return '$' + v.toLocaleString('en-US', { maximumFractionDigits: 0 })
-  if (unit === 'B') return v.toFixed(1) + 'B'
-  if (unit === '%') return v.toFixed(1) + '%'
-  if (unit === 'δ') return v.toFixed(3)
-  return v.toFixed(1) + (unit ? ' ' + unit : '')
+interface CardItem {
+  label: string
+  key: string
+  type: 'avg' | 'sum' | 'last' | 'decision' | 'bias'
+  decimals?: number
+  prefix?: string
+  color?: string
 }
 
-// ── Chart groups ──
-const CHART_GROUPS: { title: string; series: SeriesDef[] }[] = [
-  {
-    title: 'Portfolio & PnL',
-    series: [
-      { key: 'balance', label: 'Balance', color: '#60a5fa', unit: '$' },
-      { key: 'spotPrice', label: 'SPX Spot', color: '#818cf8', unit: '$' },
-    ],
-  },
-  {
-    title: 'Gamma Exposure',
-    series: [
-      { key: 'gex', label: 'Total GEX', color: '#a78bfa', unit: 'B' },
-      { key: 'spotGex', label: 'Spot GEX', color: '#c084fc', unit: '' },
-      { key: 'zeroGamma', label: 'Zero Gamma', color: '#e879f9', unit: '' },
-    ],
-  },
-  {
-    title: 'Volatility & Expected Move',
-    series: [
-      { key: 'volScore', label: 'Vol Risk Score', color: '#fb923c', unit: '' },
-      { key: 'expMove', label: 'Expected Move', color: '#fbbf24', unit: 'pts' },
-    ],
-  },
-  {
-    title: 'Market Breadth',
-    series: [
-      { key: 'adRatio', label: 'A/D Ratio', color: '#34d399', unit: '' },
-      { key: 'pct50ma', label: '% > 50 MA', color: '#2dd4bf', unit: '%' },
-      { key: 'pct200ma', label: '% > 200 MA', color: '#22d3ee', unit: '%' },
-      { key: 'mcclellan', label: 'McClellan', color: '#38bdf8', unit: '' },
-    ],
-  },
-]
+interface CardSection {
+  title: string
+  items: CardItem[]
+}
+
+export interface TimelineConfig {
+  charts: { title: string; series: SeriesDef[] }[]
+  cards: CardSection[]
+}
+
+interface Props {
+  data: Record<string, TData>
+  config?: TimelineConfig | null
+}
+
+// ── Default config (used when no config file provided) ──
+const DEFAULT_CONFIG: TimelineConfig = {
+  charts: [
+    {
+      title: 'Portfolio & PnL',
+      series: [
+        { key: 'balance', label: 'Balance', color: '#60a5fa', unit: '$' },
+        { key: 'spotPrice', label: 'SPX Spot', color: '#818cf8', unit: '$' },
+      ],
+    },
+    {
+      title: 'Gamma Exposure',
+      series: [
+        { key: 'gex', label: 'Total GEX', color: '#a78bfa', unit: 'B' },
+        { key: 'spotGex', label: 'Spot GEX', color: '#c084fc', unit: '' },
+        { key: 'zeroGamma', label: 'Zero Gamma', color: '#e879f9', unit: '' },
+      ],
+    },
+    {
+      title: 'Volatility & Expected Move',
+      series: [
+        { key: 'volScore', label: 'Vol Risk Score', color: '#fb923c', unit: '' },
+        { key: 'expMove', label: 'Expected Move', color: '#fbbf24', unit: 'pts' },
+      ],
+    },
+    {
+      title: 'Market Breadth',
+      series: [
+        { key: 'adRatio', label: 'A/D Ratio', color: '#34d399', unit: '' },
+        { key: 'pct50ma', label: '% > 50 MA', color: '#2dd4bf', unit: '%' },
+        { key: 'pct200ma', label: '% > 200 MA', color: '#22d3ee', unit: '%' },
+        { key: 'mcclellan', label: 'McClellan', color: '#38bdf8', unit: '' },
+      ],
+    },
+  ],
+  cards: [],
+}
 
 function MiniChart({ dates, data, series: allSeries }: { dates: string[]; data: Record<string, TData>; series: SeriesDef[] }) {
   const svgRef = useRef<SVGSVGElement>(null)
@@ -162,161 +178,59 @@ function MiniChart({ dates, data, series: allSeries }: { dates: string[]; data: 
   )
 }
 
-function biasColor(v: string): string {
-  const u = v.toLowerCase()
-  if (u === 'bullish') return '#4ade80'
-  if (u === 'bearish') return '#f87171'
-  return '#fbbf24'
-}
+function CardValue({ item, dates, data }: { item: CardItem; dates: string[]; data: Record<string, TData> }) {
+  const d = item.decimals ?? 0
+  const p = item.prefix ?? ''
 
-// ── Aggregate card values across month ──
-function avgNum(dates: string[], data: Record<string, TData>, key: string): number {
-  const vals = dates.map(d => (data[d]?.[key] as number) ?? 0).filter(v => v !== 0)
-  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0
-}
-
-function sumNum(dates: string[], data: Record<string, TData>, key: string): number {
-  return dates.reduce((s, d) => s + ((data[d]?.[key] as number) ?? 0), 0)
-}
-
-function lastStr(dates: string[], data: Record<string, TData>, key: string): string {
-  for (let i = dates.length - 1; i >= 0; i--) {
-    const v = data[dates[i]]?.[key]
-    if (v) return String(v)
+  switch (item.type) {
+    case 'avg':
+      return <div className={styles.cardVal} style={item.color ? { color: item.color } : undefined}>{p}{avgNum(dates, data, item.key).toFixed(d)}</div>
+    case 'sum':
+      return <div className={styles.cardVal} style={item.color ? { color: item.color } : undefined}>{p}{sumNum(dates, data, item.key).toFixed(d)}</div>
+    case 'last':
+      return <div className={styles.cardVal}>{lastStr(dates, data, item.key)}</div>
+    case 'bias': {
+      const v = lastStr(dates, data, item.key)
+      return <div className={styles.cardVal} style={{ color: biasColor(v) }}>{v}</div>
+    }
+    case 'decision':
+      return (
+        <div className={styles.cardVal}>
+          <span style={{ color: '#4ade80' }}>{countDecision(dates, data, item.key, 'TRADE')}</span>
+          <span style={{ color: '#4a5060' }}> / </span>
+          <span style={{ color: '#f87171' }}>{countDecision(dates, data, item.key, 'NO TRADE')}</span>
+          <span className={styles.cardSub}> trade / no trade</span>
+        </div>
+      )
   }
-  return '—'
 }
 
-function countDecision(dates: string[], data: Record<string, TData>, key: string, val: string): number {
-  return dates.filter(d => String(data[d]?.[key] ?? '').toUpperCase() === val.toUpperCase()).length
-}
-
-export default function TimelineChart({ data }: Props) {
+export default function TimelineChart({ data, config }: Props) {
   const dates = Object.keys(data).sort()
+  const cfg = config ?? DEFAULT_CONFIG
 
   return (
     <div className={styles.root}>
-      {/* Chart groups */}
-      {CHART_GROUPS.map(g => (
+      {cfg.charts.map(g => (
         <div key={g.title} className={styles.section}>
           <div className={styles.sectionTitle}>{g.title}</div>
           <MiniChart dates={dates} data={data} series={g.series} />
         </div>
       ))}
 
-      {/* Metric cards */}
-      <div className={styles.section}>
-        <div className={styles.sectionTitle}>Month Summary</div>
-        <div className={styles.cardsGrid}>
-          {/* Order metrics */}
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>Strategy</div>
-            <div className={styles.cardVal}>{lastStr(dates, data, 'strategy')}</div>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>Symbol</div>
-            <div className={styles.cardVal}>{lastStr(dates, data, 'symbol')}</div>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>Wing Width</div>
-            <div className={styles.cardVal}>{avgNum(dates, data, 'wingWidth').toFixed(0)}</div>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>Total Commission</div>
-            <div className={styles.cardVal}>${sumNum(dates, data, 'commission').toFixed(2)}</div>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>Avg Max Loss</div>
-            <div className={styles.cardVal} style={{ color: '#f87171' }}>${avgNum(dates, data, 'maxLoss').toFixed(2)}</div>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>Avg Max Profit</div>
-            <div className={styles.cardVal} style={{ color: '#4ade80' }}>${avgNum(dates, data, 'maxProfit').toFixed(2)}</div>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>Avg Profit Target</div>
-            <div className={styles.cardVal}>${avgNum(dates, data, 'profitTarget').toFixed(2)}</div>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>Avg Put δ</div>
-            <div className={styles.cardVal}>{avgNum(dates, data, 'putDelta').toFixed(3)}</div>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>Avg Call δ</div>
-            <div className={styles.cardVal}>{avgNum(dates, data, 'callDelta').toFixed(3)}</div>
-          </div>
-
-          {/* Expected move range */}
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>Avg EM Upper</div>
-            <div className={styles.cardVal}>{avgNum(dates, data, 'upperPrice').toFixed(0)}</div>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>Avg EM Lower</div>
-            <div className={styles.cardVal}>{avgNum(dates, data, 'lowerPrice').toFixed(0)}</div>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>Avg Vol Threshold</div>
-            <div className={styles.cardVal}>{avgNum(dates, data, 'volThreshold').toFixed(0)}</div>
+      {cfg.cards.map(section => (
+        <div key={section.title} className={styles.section}>
+          <div className={styles.sectionTitle}>{section.title}</div>
+          <div className={styles.cardsGrid}>
+            {section.items.map(item => (
+              <div key={item.key} className={styles.card}>
+                <div className={styles.cardLabel}>{item.label}</div>
+                <CardValue item={item} dates={dates} data={data} />
+              </div>
+            ))}
           </div>
         </div>
-      </div>
-
-      {/* Decision cards */}
-      <div className={styles.section}>
-        <div className={styles.sectionTitle}>Decisions & Signals</div>
-        <div className={styles.cardsGrid}>
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>Volatility Decision</div>
-            <div className={styles.cardVal}>
-              <span style={{ color: '#4ade80' }}>{countDecision(dates, data, 'volDecision', 'TRADE')}</span>
-              <span style={{ color: '#4a5060' }}> / </span>
-              <span style={{ color: '#f87171' }}>{countDecision(dates, data, 'volDecision', 'NO TRADE')}</span>
-              <span className={styles.cardSub}> trade / no trade</span>
-            </div>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>GEX Decision</div>
-            <div className={styles.cardVal}>
-              <span style={{ color: '#4ade80' }}>{countDecision(dates, data, 'gexDecision', 'TRADE')}</span>
-              <span style={{ color: '#4a5060' }}> / </span>
-              <span style={{ color: '#f87171' }}>{countDecision(dates, data, 'gexDecision', 'NO TRADE')}</span>
-              <span className={styles.cardSub}> trade / no trade</span>
-            </div>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>GEX Strategy</div>
-            <div className={styles.cardVal}>{lastStr(dates, data, 'gexStrategy')}</div>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>Breadth Decision</div>
-            <div className={styles.cardVal}>
-              <span style={{ color: '#4ade80' }}>{countDecision(dates, data, 'breadthDecision', 'TRADE')}</span>
-              <span style={{ color: '#4a5060' }}> / </span>
-              <span style={{ color: '#f87171' }}>{countDecision(dates, data, 'breadthDecision', 'NO TRADE')}</span>
-              <span className={styles.cardSub}> trade / no trade</span>
-            </div>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>Market Bias</div>
-            <div className={styles.cardVal} style={{ color: biasColor(lastStr(dates, data, 'bias')) }}>
-              {lastStr(dates, data, 'bias')}
-            </div>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>Trend</div>
-            <div className={styles.cardVal} style={{ color: biasColor(lastStr(dates, data, 'trend')) }}>
-              {lastStr(dates, data, 'trend')}
-            </div>
-          </div>
-          <div className={styles.card}>
-            <div className={styles.cardLabel}>Momentum</div>
-            <div className={styles.cardVal} style={{ color: biasColor(lastStr(dates, data, 'momentum')) }}>
-              {lastStr(dates, data, 'momentum')}
-            </div>
-          </div>
-        </div>
-      </div>
+      ))}
     </div>
   )
 }

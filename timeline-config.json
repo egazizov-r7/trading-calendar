@@ -1,0 +1,66 @@
+{
+  "charts": [
+    {
+      "title": "Portfolio & PnL",
+      "series": [
+        { "key": "balance", "label": "Balance", "color": "#60a5fa", "unit": "$" },
+        { "key": "spotPrice", "label": "SPX Spot", "color": "#818cf8", "unit": "$" }
+      ]
+    },
+    {
+      "title": "Gamma Exposure",
+      "series": [
+        { "key": "gex", "label": "Total GEX", "color": "#a78bfa", "unit": "B" },
+        { "key": "spotGex", "label": "Spot GEX", "color": "#c084fc", "unit": "" },
+        { "key": "zeroGamma", "label": "Zero Gamma", "color": "#e879f9", "unit": "" }
+      ]
+    },
+    {
+      "title": "Volatility & Expected Move",
+      "series": [
+        { "key": "volScore", "label": "Vol Risk Score", "color": "#fb923c", "unit": "" },
+        { "key": "expMove", "label": "Expected Move", "color": "#fbbf24", "unit": "pts" }
+      ]
+    },
+    {
+      "title": "Market Breadth",
+      "series": [
+        { "key": "adRatio", "label": "A/D Ratio", "color": "#34d399", "unit": "" },
+        { "key": "pct50ma", "label": "% > 50 MA", "color": "#2dd4bf", "unit": "%" },
+        { "key": "pct200ma", "label": "% > 200 MA", "color": "#22d3ee", "unit": "%" },
+        { "key": "mcclellan", "label": "McClellan", "color": "#38bdf8", "unit": "" }
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "title": "Month Summary",
+      "items": [
+        { "label": "Strategy", "key": "strategy", "type": "last" },
+        { "label": "Symbol", "key": "symbol", "type": "last" },
+        { "label": "Wing Width", "key": "wingWidth", "type": "avg", "decimals": 0 },
+        { "label": "Total Commission", "key": "commission", "type": "sum", "prefix": "$", "decimals": 2 },
+        { "label": "Avg Max Loss", "key": "maxLoss", "type": "avg", "prefix": "$", "decimals": 2, "color": "#f87171" },
+        { "label": "Avg Max Profit", "key": "maxProfit", "type": "avg", "prefix": "$", "decimals": 2, "color": "#4ade80" },
+        { "label": "Avg Profit Target", "key": "profitTarget", "type": "avg", "prefix": "$", "decimals": 2 },
+        { "label": "Avg Put δ", "key": "putDelta", "type": "avg", "decimals": 3 },
+        { "label": "Avg Call δ", "key": "callDelta", "type": "avg", "decimals": 3 },
+        { "label": "Avg EM Upper", "key": "upperPrice", "type": "avg", "decimals": 0 },
+        { "label": "Avg EM Lower", "key": "lowerPrice", "type": "avg", "decimals": 0 },
+        { "label": "Avg Vol Threshold", "key": "volThreshold", "type": "avg", "decimals": 0 }
+      ]
+    },
+    {
+      "title": "Decisions & Signals",
+      "items": [
+        { "label": "Volatility Decision", "key": "volDecision", "type": "decision" },
+        { "label": "GEX Decision", "key": "gexDecision", "type": "decision" },
+        { "label": "GEX Strategy", "key": "gexStrategy", "type": "last" },
+        { "label": "Breadth Decision", "key": "breadthDecision", "type": "decision" },
+        { "label": "Market Bias", "key": "bias", "type": "bias" },
+        { "label": "Trend", "key": "trend", "type": "bias" },
+        { "label": "Momentum", "key": "momentum", "type": "bias" }
+      ]
+    }
+  ]
+}

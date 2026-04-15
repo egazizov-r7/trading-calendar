@@ -1,8 +1,8 @@
 # Stage 1: install dependencies
 FROM node:20-alpine AS deps
 WORKDIR /app
-COPY package.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm ci
 
 # Stage 2: build Next.js app
 FROM node:20-alpine AS builder
@@ -27,6 +27,8 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/column-mapping.json ./column-mapping.json
+COPY --from=builder --chown=nextjs:nodejs /app/timeline-config.json ./timeline-config.json
 
 USER nextjs
 
