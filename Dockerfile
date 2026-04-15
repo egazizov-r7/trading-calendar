@@ -1,11 +1,11 @@
 # Stage 1: install dependencies
-FROM node:20-alpine AS deps
+FROM node:20-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm install
 
 # Stage 2: build Next.js app
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -14,10 +14,10 @@ RUN echo '{}' > /app/service-account.json
 RUN npm run build
 
 # Stage 3: production runtime (minimal image)
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
 
-RUN apk add --no-cache nano
+RUN apt-get update && apt-get install -y nano && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 ENV PORT=3000
