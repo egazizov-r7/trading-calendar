@@ -17,7 +17,11 @@ RUN npm run build
 FROM node:20-slim AS runner
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y nano && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install --no-install-recommends -y curl nano iputils-ping && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 ENV PORT=3000
