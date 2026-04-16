@@ -1,6 +1,6 @@
 {
   "date_time": "date_time_ny",
-  "net_credit": "order_net_credit",
+  "net_credit": "order_pnl",
   "status": "environment_status",
   "balance": "portfolio_balance",
 
