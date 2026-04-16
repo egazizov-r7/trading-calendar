@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import styles from './TradingCalendar.module.css'
 import TimelineChart, { TimelineConfig } from './TimelineChart'
-import { formatPnl, getMaxAbs, dayBg, DayData } from '@/lib/utils'
+import { formatPnl, getMaxAbs, dayBg, DayData, avgNum } from '@/lib/utils'
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
@@ -163,6 +163,15 @@ export default function TradingCalendar() {
   const lossDays = monthDays.filter(([, d]) => d.pnl < 0).length
   const totalTrades = monthDays.reduce((s, [, d]) => s + d.trades, 0)
 
+  // Monthly averages from timeline data for calendar cards
+  const monthTimelineDates = Object.keys(timelineData).filter(k => {
+    const d = new Date(k + 'T00:00:00')
+    return d.getFullYear() === y && d.getMonth() === m
+  }).sort()
+  const avgMaxLoss = avgNum(monthTimelineDates, timelineData, 'maxLoss')
+  const avgMaxProfit = avgNum(monthTimelineDates, timelineData, 'maxProfit')
+  const avgProfitTarget = avgNum(monthTimelineDates, timelineData, 'profitTarget')
+
   const cells: React.ReactNode[] = []
 
   // Empty cells for offset
@@ -307,6 +316,18 @@ export default function TradingCalendar() {
         <div className={styles.stat}>
           <div className={styles.statLabel}>Trades</div>
           <div className={styles.statVal}>{totalTrades > 0 ? totalTrades : '—'}</div>
+        </div>
+        <div className={styles.stat}>
+          <div className={styles.statLabel}>Avg Max Loss</div>
+          <div className={`${styles.statVal} ${styles.neg}`}>{monthTimelineDates.length > 0 ? `$${avgMaxLoss.toFixed(2)}` : '—'}</div>
+        </div>
+        <div className={styles.stat}>
+          <div className={styles.statLabel}>Avg Max Profit</div>
+          <div className={`${styles.statVal} ${styles.pos}`}>{monthTimelineDates.length > 0 ? `$${avgMaxProfit.toFixed(2)}` : '—'}</div>
+        </div>
+        <div className={styles.stat}>
+          <div className={styles.statLabel}>Avg Profit Target</div>
+          <div className={styles.statVal}>{monthTimelineDates.length > 0 ? `$${avgProfitTarget.toFixed(2)}` : '—'}</div>
         </div>
       </div>
 
