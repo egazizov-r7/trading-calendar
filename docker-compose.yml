@@ -9,3 +9,5 @@ services:
       - stack.env
     environment:
       - NODE_ENV=production
+    volumes:
+      - /opt_files/credentials.json:/app/service-account.json:ro

@@ -9,8 +9,6 @@ FROM node:20-slim AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN touch /app/service-account.json
-RUN echo '{}' > /app/service-account.json
 RUN npm run build
 
 # Stage 3: production runtime (minimal image)
@@ -33,8 +31,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/column-mapping.json ./column-mapping.json
 COPY --from=builder --chown=nextjs:nodejs /app/timeline-config.json ./timeline-config.json
-RUN touch /app/service-account.json
-RUN echo '{}' > /app/service-account.json
 
 EXPOSE 3000
 
