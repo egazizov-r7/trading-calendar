@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import styles from './TradingCalendar.module.css'
 import TimelineChart, { TimelineConfig } from './TimelineChart'
-import { formatPnl, getMaxAbs, dayBg, DayData, avgNum } from '@/lib/utils'
+import { formatPnl, getMaxAbs, dayBg, DayData } from '@/lib/utils'
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
@@ -91,6 +91,7 @@ export default function TradingCalendar() {
   const [loading, setLoading] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
   const [balance, setBalance] = useState<number>(DEMO_BALANCE)
+  const [deposit, setDeposit] = useState<number>(250000)
   const [error, setError] = useState<string | null>(null)
   const [tooltip, setTooltip] = useState<TooltipState>({ visible: false, x: 0, y: 0, date: '', data: null })
   const [isMobile, setIsMobile] = useState(false)
@@ -127,6 +128,7 @@ export default function TradingCalendar() {
         setIsDemo(false)
         setTradeData(json.data)
         setBalance(json.balance || json.deposit)
+        setDeposit(json.deposit || 250000)
         setTimelineData(json.timeline || {})
         setTimelineConfig(json.timelineConfig || null)
         setLastUpdated(json.updatedAt)
@@ -152,6 +154,14 @@ export default function TradingCalendar() {
   const daysInMonth = new Date(y, m + 1, 0).getDate()
   const maxAbs = getMaxAbs(tradeData)
 
+  // Overall metrics
+  const overallPnl = Object.values(tradeData).reduce((s, d) => s + d.pnl, 0)
+  const overallPct = deposit ? (overallPnl / deposit) * 100 : 0
+  const allBalances = Object.keys(timelineData).sort().map(k => (timelineData[k] as Record<string, number>).balance ?? deposit)
+  const peakBalance = allBalances.length ? allBalances.reduce((peak, b) => { peak = Math.max(peak, b); return peak }, deposit) : deposit
+  const drawdown = balance - peakBalance
+  const drawdownPct = peakBalance ? (drawdown / peakBalance) * 100 : 0
+
   // Stats for current month
   const monthDays = Object.entries(tradeData).filter(([k]) => {
     const d = new Date(k + 'T00:00:00')
@@ -163,14 +173,13 @@ export default function TradingCalendar() {
   const lossDays = monthDays.filter(([, d]) => d.pnl < 0).length
   const totalTrades = monthDays.reduce((s, [, d]) => s + d.trades, 0)
 
-  // Monthly averages from timeline data for calendar cards
-  const monthTimelineDates = Object.keys(timelineData).filter(k => {
-    const d = new Date(k + 'T00:00:00')
-    return d.getFullYear() === y && d.getMonth() === m
-  }).sort()
-  const avgMaxLoss = avgNum(monthTimelineDates, timelineData, 'maxLoss')
-  const avgMaxProfit = avgNum(monthTimelineDates, timelineData, 'maxProfit')
-  const avgProfitTarget = avgNum(monthTimelineDates, timelineData, 'profitTarget')
+  // Monthly averages calculated from PnL data
+  const monthPnls = monthDays.map(([, d]) => d.pnl).filter(v => v !== 0)
+  const losses = monthPnls.filter(v => v < 0)
+  const profits = monthPnls.filter(v => v > 0)
+  const avgMaxLoss = losses.length ? losses.reduce((a, b) => a + b, 0) / losses.length : 0
+  const avgMaxProfit = profits.length ? profits.reduce((a, b) => a + b, 0) / profits.length : 0
+  const avgProfitTarget = monthPnls.length ? monthPnls.reduce((a, b) => a + b, 0) / monthPnls.length : 0
 
   const cells: React.ReactNode[] = []
 
@@ -291,8 +300,24 @@ export default function TradingCalendar() {
 
       {/* Portfolio Balance */}
       <div className={styles.balanceRow}>
-        <div className={styles.balanceLabel}>Portfolio Balance</div>
-        <div className={styles.balanceVal}>${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+        <div className={styles.balanceCard}>
+          <div className={styles.balanceLabel}>Portfolio Balance</div>
+          <div className={styles.balanceVal}>${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+        </div>
+        <div className={styles.balanceCard}>
+          <div className={styles.balanceLabel}>Overall Profit</div>
+          <div className={`${styles.balanceVal} ${overallPnl > 0 ? styles.pos : overallPnl < 0 ? styles.neg : ''}`}>
+            {overallPnl >= 0 ? '+' : ''}${overallPnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <span className={styles.balancePct}> ({overallPct >= 0 ? '+' : ''}{overallPct.toFixed(2)}%)</span>
+          </div>
+        </div>
+        <div className={styles.balanceCard}>
+          <div className={styles.balanceLabel}>Drawdown</div>
+          <div className={`${styles.balanceVal} ${drawdown < 0 ? styles.neg : ''}`}>
+            {drawdown === 0 ? '—' : `${drawdown >= 0 ? '+' : ''}$${drawdown.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+            {drawdown !== 0 && <span className={styles.balancePct}> ({drawdownPct.toFixed(2)}%)</span>}
+          </div>
+        </div>
       </div>
 
       {/* Stats */}
@@ -300,7 +325,7 @@ export default function TradingCalendar() {
         <div className={styles.stat}>
           <div className={styles.statLabel}>Month PnL</div>
           <div className={`${styles.statVal} ${totalPnl > 0 ? styles.pos : totalPnl < 0 ? styles.neg : ''}`}>
-            {monthDays.length > 0 ? formatPnl(totalPnl) : '—'}
+            {monthDays.length > 0 ? `${totalPnl >= 0 ? '+' : ''}$${totalPnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
           </div>
         </div>
         <div className={styles.stat}>
@@ -314,20 +339,20 @@ export default function TradingCalendar() {
           <div className={styles.statVal}>{monthDays.length > 0 ? `${winDays}W / ${lossDays}L` : '—'}</div>
         </div>
         <div className={styles.stat}>
-          <div className={styles.statLabel}>Trades</div>
-          <div className={styles.statVal}>{totalTrades > 0 ? totalTrades : '—'}</div>
-        </div>
-        <div className={styles.stat}>
           <div className={styles.statLabel}>Avg Max Loss</div>
-          <div className={`${styles.statVal} ${styles.neg}`}>{monthTimelineDates.length > 0 ? `$${avgMaxLoss.toFixed(2)}` : '—'}</div>
+          <div className={`${styles.statVal} ${styles.neg}`}>{losses.length > 0 ? `$${avgMaxLoss.toFixed(2)}` : '—'}</div>
         </div>
         <div className={styles.stat}>
           <div className={styles.statLabel}>Avg Max Profit</div>
-          <div className={`${styles.statVal} ${styles.pos}`}>{monthTimelineDates.length > 0 ? `$${avgMaxProfit.toFixed(2)}` : '—'}</div>
+          <div className={`${styles.statVal} ${styles.pos}`}>{profits.length > 0 ? `$${avgMaxProfit.toFixed(2)}` : '—'}</div>
         </div>
         <div className={styles.stat}>
           <div className={styles.statLabel}>Avg Profit Target</div>
-          <div className={styles.statVal}>{monthTimelineDates.length > 0 ? `$${avgProfitTarget.toFixed(2)}` : '—'}</div>
+          <div className={styles.statVal}>{monthPnls.length > 0 ? `$${avgProfitTarget.toFixed(2)}` : '—'}</div>
+        </div>
+        <div className={styles.stat}>
+          <div className={styles.statLabel}>Win Rate</div>
+          <div className={styles.statVal}>{monthDays.length > 0 ? `${((winDays / monthDays.length) * 100).toFixed(1)}%` : '—'}</div>
         </div>
       </div>
 

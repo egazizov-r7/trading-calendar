@@ -132,6 +132,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
+}
+
+.balanceCard {
+  flex: 1;
 }
 
 .balanceLabel {
@@ -146,6 +151,12 @@
   font-size: 18px;
   font-weight: 600;
   color: #e8e9ec;
+}
+
+.balancePct {
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.7;
 }
 
 .errorBanner {
